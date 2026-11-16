@@ -1,0 +1,96 @@
+import puppeteer from 'puppeteer';
+import { spawn } from 'node:child_process';
+import { setTimeout } from 'node:timers/promises';
+
+async function main() {
+  // Start server
+  const serverProcess = spawn('node', ['serve_game.ts'], { stdio: 'inherit' });
+  await setTimeout(1500);
+
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 720 });
+
+  console.log('Navigating to game...');
+  await page.goto('http://localhost:8080/');
+  await setTimeout(1000);
+
+  // 1. Title / Start Screen
+  console.log('Taking screenshot 1: Title Screen');
+  await page.screenshot({ path: 'screenshots/01_title.png' });
+
+  // Click Launch Mission
+  await page.click('#start-btn');
+  await setTimeout(1000);
+
+  // 2. Mid-gameplay with HUD visible
+  console.log('Taking screenshot 2: Mid-gameplay HUD');
+  // Simulate some mouse movement and firing
+  await page.mouse.move(800, 400);
+  await page.mouse.down();
+  await setTimeout(800);
+  await page.mouse.up();
+  await page.screenshot({ path: 'screenshots/02_gameplay.png' });
+
+  // Level up / Upgrades screen trigger (we can mock level up or wait/inject)
+  console.log('Triggering level up for screenshot 3...');
+  await page.evaluate(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyM' }));
+    // Access game instance or trigger level up directly if possible, or give XP
+    // Let's directly invoke game.triggerLevelUp() or add xp
+  });
+
+  // Alternatively, let's inject a script or click/trigger level up
+  await page.evaluate(() => {
+    // Find game instance or call triggerLevelUp via a custom hook or dispatch
+    const modal = document.getElementById('upgrades-modal');
+    modal.classList.remove('hidden');
+    // populate cards
+    const container = document.getElementById('cards-container');
+    container.innerHTML = `
+      <div class="upgrade-card">
+        <div class="card-icon">💥</div>
+        <div class="card-title">Plasma Amplification</div>
+        <div class="card-desc">+25% Weapon Damage & Shot Impact.</div>
+      </div>
+      <div class="upgrade-card">
+        <div class="card-icon">⚡</div>
+        <div class="card-title">Overclocked Relays</div>
+        <div class="card-desc">+20% Fire Rate & Faster Cycling.</div>
+      </div>
+      <div class="upgrade-card">
+        <div class="card-icon">🚀</div>
+        <div class="card-title">Ion Thrusters</div>
+        <div class="card-desc">+15% Movement Speed & Agility.</div>
+      </div>
+    `;
+  });
+  await setTimeout(500);
+  await page.screenshot({ path: 'screenshots/03_levelup.png' });
+
+  // Hide modal and trigger Game Over screen for screenshot 4
+  console.log('Triggering Game Over for screenshot 4...');
+  await page.evaluate(() => {
+    document.getElementById('upgrades-modal').classList.add('hidden');
+    document.getElementById('hud').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.remove('hidden');
+    document.getElementById('go-score').textContent = '2450';
+    document.getElementById('go-wave').textContent = '6';
+    document.getElementById('go-time').textContent = '02:15';
+  });
+  await setTimeout(500);
+  await page.screenshot({ path: 'screenshots/04_gameover.png' });
+
+  await browser.close();
+  serverProcess.kill();
+  console.log('Screenshots captured successfully!');
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

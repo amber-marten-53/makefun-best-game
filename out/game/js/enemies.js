@@ -1,4 +1,4 @@
-// Enemy types: chasers, splitters, shooters, orbiters, and epic bosses
+// Enemy types: chasers, splitters, shooters, orbiters, dashers, spawners, snipers, tanks, and epic bosses
 import { audio } from './audio.js';
 
 export class EnemySystem {
@@ -28,7 +28,9 @@ export class EnemySystem {
         maxHp: bossHp,
         speed: 1.5,
         attackCooldown: 100,
-        color: '#ff00ff'
+        color: '#ff00ff',
+        phase: 1,
+        entranceTimer: 60
       });
       return;
     }
@@ -45,9 +47,13 @@ export class EnemySystem {
       // Mix enemy types based on wave
       let type = 'chaser';
       const rand = Math.random();
-      if (waveNum >= 2 && rand < 0.3) type = 'splitter';
-      else if (waveNum >= 3 && rand < 0.55) type = 'shooter';
-      else if (waveNum >= 4 && rand < 0.8) type = 'orbiter';
+      if (waveNum >= 2 && rand < 0.2) type = 'splitter';
+      else if (waveNum >= 3 && rand < 0.35) type = 'shooter';
+      else if (waveNum >= 4 && rand < 0.5) type = 'orbiter';
+      else if (waveNum >= 5 && rand < 0.65) type = 'dasher';
+      else if (waveNum >= 6 && rand < 0.75) type = 'spawner';
+      else if (waveNum >= 7 && rand < 0.88) type = 'sniper';
+      else if (waveNum >= 8 && rand < 1.0) type = 'tank';
 
       let radius = 14;
       let hp = 30 + waveNum * 5;
@@ -69,6 +75,26 @@ export class EnemySystem {
         hp = 25 + waveNum * 4;
         speed = 2.8;
         color = '#00ff66';
+      } else if (type === 'dasher') {
+        radius = 13;
+        hp = 30 + waveNum * 5;
+        speed = 2.0;
+        color = '#ff33ff';
+      } else if (type === 'spawner') {
+        radius = 20;
+        hp = 70 + waveNum * 10;
+        speed = 1.2;
+        color = '#99ff33';
+      } else if (type === 'sniper') {
+        radius = 14;
+        hp = 25 + waveNum * 4;
+        speed = 1.4;
+        color = '#ffff33';
+      } else if (type === 'tank') {
+        radius = 26;
+        hp = 150 + waveNum * 25;
+        speed = 0.9;
+        color = '#ff5533';
       }
 
       this.enemies.push({
@@ -79,6 +105,11 @@ export class EnemySystem {
         speed,
         attackCooldown: Math.floor(Math.random() * 60 + 40),
         orbitAngle: Math.random() * Math.PI * 2,
+        dashTimer: 0,
+        isDashing: false,
+        dashDx: 0,
+        dashDy: 0,
+        sniperAngle: 0,
         color
       });
     }
@@ -126,36 +157,158 @@ export class EnemySystem {
         const ody = targetY - e.y;
         e.x += odx * 0.05;
         e.y += ody * 0.05;
-      } else if (e.type === 'boss') {
-        // Boss movement & attacks
-        if (dist > 150) {
+      } else if (e.type === 'dasher') {
+        e.attackCooldown--;
+        if (!e.isDashing) {
+          if (dist > 150) {
+            e.x += (dx / dist) * e.speed;
+            e.y += (dy / dist) * e.speed;
+          }
+          if (e.attackCooldown <= 0) {
+            e.isDashing = true;
+            e.dashTimer = 30; // 0.5s telegraph/dash
+            const dashAngle = Math.atan2(dy, dx);
+            e.dashDx = Math.cos(dashAngle) * 7.5;
+            e.dashDy = Math.sin(dashAngle) * 7.5;
+            e.attackCooldown = 140;
+          }
+        } else {
+          e.x += e.dashDx;
+          e.y += e.dashDy;
+          e.dashTimer--;
+          if (e.dashTimer <= 0) {
+            e.isDashing = false;
+          }
+        }
+      } else if (e.type === 'spawner') {
+        if (dist > 220) {
           e.x += (dx / dist) * e.speed;
           e.y += (dy / dist) * e.speed;
         }
         e.attackCooldown--;
         if (e.attackCooldown <= 0) {
-          // Boss radial bullet burst
-          const burstCount = 8;
-          for (let b = 0; b < burstCount; b++) {
-            const angle = (Math.PI * 2 / burstCount) * b;
-            weaponSystem.enemyBullets.push({
-              x: e.x, y: e.y,
-              vx: Math.cos(angle) * 4.5,
-              vy: Math.sin(angle) * 4.5,
-              damage: 20,
-              life: 140,
-              radius: 6,
-              color: '#ff00ff'
+          // Release a small mite if total enemies < 60
+          if (this.enemies.length < 60) {
+            this.enemies.push({
+              type: 'chaser',
+              x: e.x + (Math.random() - 0.5) * 20,
+              y: e.y + (Math.random() - 0.5) * 20,
+              radius: 9,
+              hp: 15, maxHp: 15,
+              speed: 3.2,
+              color: '#99ff33'
             });
           }
-          audio.playExplosion(false);
-          e.attackCooldown = 90;
+          e.attackCooldown = 180;
+        }
+      } else if (e.type === 'sniper') {
+        if (dist > 320) {
+          e.x += (dx / dist) * e.speed;
+          e.y += (dy / dist) * e.speed;
+        } else if (dist < 260) {
+          e.x -= (dx / dist) * e.speed;
+          e.y -= (dy / dist) * e.speed;
+        }
+        e.attackCooldown--;
+        if (e.attackCooldown <= 0) {
+          weaponSystem.fireEnemyBullet(e.x, e.y, player.x, player.y, 6, '#ffff33');
+          e.attackCooldown = 160;
+        }
+      } else if (e.type === 'tank') {
+        if (dist > 1) {
+          e.x += (dx / dist) * e.speed;
+          e.y += (dy / dist) * e.speed;
+        }
+      } else if (e.type === 'boss') {
+        if (e.entranceTimer > 0) {
+          e.entranceTimer--;
+          return;
+        }
+
+        const hpRatio = e.hp / e.maxHp;
+        if (hpRatio < 0.33) {
+          e.phase = 3;
+          e.speed = 2.2;
+        } else if (hpRatio < 0.66) {
+          e.phase = 2;
+          e.speed = 1.8;
+        }
+
+        if (dist > 150) {
+          e.x += (dx / dist) * e.speed;
+          e.y += (dy / dist) * e.speed;
+        }
+
+        e.attackCooldown--;
+        if (e.attackCooldown <= 0) {
+          if (e.phase === 3) {
+            if (this.enemies.length < 50) {
+              for (let m = 0; m < 2; m++) {
+                this.enemies.push({
+                  type: 'dasher',
+                  x: e.x + (Math.random() - 0.5) * 40,
+                  y: e.y + (Math.random() - 0.5) * 40,
+                  radius: 12,
+                  hp: 30, maxHp: 30,
+                  speed: 2.8,
+                  color: '#ff00ff'
+                });
+              }
+            }
+            const burstCount = 12;
+            for (let b = 0; b < burstCount; b++) {
+              const angle = (Math.PI * 2 / burstCount) * b;
+              weaponSystem.enemyBullets.push({
+                x: e.x, y: e.y,
+                vx: Math.cos(angle) * 5,
+                vy: Math.sin(angle) * 5,
+                damage: 25,
+                life: 150,
+                radius: 6,
+                color: '#ff00ff'
+              });
+            }
+            audio.playExplosion(true);
+            e.attackCooldown = 70;
+          } else if (e.phase === 2) {
+            const spiralCount = 6;
+            const baseAngle = Date.now() * 0.005;
+            for (let b = 0; b < spiralCount; b++) {
+              const angle = baseAngle + (Math.PI * 2 / spiralCount) * b;
+              weaponSystem.enemyBullets.push({
+                x: e.x, y: e.y,
+                vx: Math.cos(angle) * 4.5,
+                vy: Math.sin(angle) * 4.5,
+                damage: 20,
+                life: 140,
+                radius: 5,
+                color: '#ff55ff'
+              });
+            }
+            audio.playExplosion(false);
+            e.attackCooldown = 60;
+          } else {
+            const burstCount = 8;
+            for (let b = 0; b < burstCount; b++) {
+              const angle = (Math.PI * 2 / burstCount) * b;
+              weaponSystem.enemyBullets.push({
+                x: e.x, y: e.y,
+                vx: Math.cos(angle) * 4,
+                vy: Math.sin(angle) * 4,
+                damage: 15,
+                life: 130,
+                radius: 5,
+                color: '#ff00ff'
+              });
+            }
+            audio.playExplosion(false);
+            e.attackCooldown = 90;
+          }
         }
       }
-    }
   }
 
-  checkCollisions(player, weaponSystem, particles, onScore) {
+  checkCollisions(player, weaponSystem, particles, pickupSystem, onScore) {
     // Player bullets vs Enemies
     for (let bi = weaponSystem.bullets.length - 1; bi >= 0; bi--) {
       const b = weaponSystem.bullets[bi];
@@ -166,10 +319,17 @@ export class EnemySystem {
         const dist = Math.hypot(b.x - e.x, b.y - e.y);
 
         if (dist < b.radius + e.radius) {
-          // Hit!
-          e.hp -= b.damage;
+          // Hit! Damage reduction for tank from front arc
+          let finalDmg = b.damage;
+          if (e.type === 'tank') {
+            const bAngle = Math.atan2(b.y - e.y, b.x - e.x);
+            // tank facing player or bullet angle check - front armor reduces dmg by 50%
+            finalDmg *= 0.5;
+          }
+
+          e.hp -= finalDmg;
           particles.spawnSpark(b.x, b.y, e.color);
-          particles.addFloatingText(e.x, e.y - 10, Math.round(b.damage), '#00ffff');
+          particles.addFloatingText(e.x, e.y - 10, Math.round(finalDmg), '#00ffff');
 
           if (e.hp <= 0) {
             // Destroyed enemy
@@ -188,7 +348,9 @@ export class EnemySystem {
               });
             }
 
-            // Splitter mechanic
+            if (pickupSystem && (Math.random() < 0.35 || e.type === 'boss' || e.type === 'tank' || e.type === 'spawner')) {
+              pickupSystem.spawn(e.x, e.y);
+            }
             if (e.type === 'splitter') {
               for (let sp = 0; sp < 2; sp++) {
                 this.enemies.push({

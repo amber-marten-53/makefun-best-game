@@ -5,6 +5,8 @@ import { Player } from './player.js';
 import { WeaponSystem } from './weapons.js';
 import { EnemySystem } from './enemies.js';
 import { UpgradeSystem } from './upgrades.js';
+import { PickupSystem } from './pickups.js';
+import { UI } from './ui.js';
 
 class Game {
   constructor() {
@@ -35,6 +37,8 @@ class Game {
     this.weapons = new WeaponSystem();
     this.enemies = new EnemySystem();
     this.upgrades = new UpgradeSystem();
+    this.pickups = new PickupSystem();
+    this.ui = new UI();
 
     this.input = {
       keys: {},
@@ -125,9 +129,16 @@ class Game {
     this.player.reset(this.arenaWidth, this.arenaHeight);
     this.weapons.reset();
     this.enemies.reset();
+    this.pickups.reset();
     this.particles.reset();
 
     this.enemies.spawnWave(this.wave, this.arenaWidth, this.arenaHeight);
+    if (this.wave % 5 === 0) {
+      const boss = this.enemies.enemies.find(e => e.type === 'boss');
+      if (boss) this.ui.showBoss('STARFALL COLOSSUS', boss.hp, boss.maxHp);
+    } else {
+      this.ui.hideBoss();
+    }
 
     document.getElementById('start-screen').classList.add('hidden');
     document.getElementById('game-over-screen').classList.add('hidden');
@@ -231,12 +242,26 @@ class Game {
   update() {
     if (this.state !== 'PLAYING') return;
 
-    this.player.update(this.input, this.arenaWidth, this.arenaHeight, this.particles);
-    this.weapons.update(this.player, this.input, this.particles);
-    this.enemies.update(this.player, this.weapons, this.particles);
+    const dt = 1 / 60; // Fixed timestep approx for UI
+    this.ui.update(dt);
 
-    const xpEarned = this.enemies.checkCollisions(this.player, this.weapons, this.particles, (pts) => {
-      this.score += pts;
+    this.player.update(this.input, this.arenaWidth, this.arenaHeight, this.particles);
+    this.weapons.update(this.player, this.input, this.particles, this.enemies);
+    this.enemies.update(this.player, this.weapons, this.particles);
+    this.pickups.update(this.player, this.particles);
+
+    // Update boss HP bar if boss exists
+    const boss = this.enemies.enemies.find(e => e.type === 'boss');
+    if (boss) {
+      this.ui.updateBossHp(boss.hp, boss.maxHp);
+    } else if (this.ui.bossBar.active) {
+      this.ui.hideBoss();
+    }
+
+    const xpEarned = this.enemies.checkCollisions(this.player, this.weapons, this.particles, this.pickups, (pts) => {
+      this.ui.addCombo(1);
+      const mult = this.ui.combo.mult || 1;
+      this.score += Math.round(pts * mult);
     });
 
     if (xpEarned > 0) {
@@ -253,6 +278,13 @@ class Game {
     if (this.enemies.enemies.length === 0) {
       this.wave++;
       this.enemies.spawnWave(this.wave, this.arenaWidth, this.arenaHeight);
+      if (this.wave % 5 === 0) {
+        const boss = this.enemies.enemies.find(e => e.type === 'boss');
+        if (boss) this.ui.showBoss('STARFALL COLOSSUS', boss.hp, boss.maxHp);
+      } else {
+        this.ui.hideBoss();
+        this.ui.showWaveBanner(`WAVE ${this.wave}`, `Prepare for combat`);
+      }
     }
 
     // Check player death
@@ -287,11 +319,24 @@ class Game {
 
     // Draw entities
     this.enemies.draw(this.ctx);
+    this.pickups.draw(this.ctx);
     this.weapons.draw(this.ctx);
     this.player.draw(this.ctx);
     this.particles.draw(this.ctx);
 
     this.ctx.restore();
+
+    // Render UI overlay on screen coords
+    this.ui.render(this.ctx, this.canvas.width, this.canvas.height, this.player.hp, this.player.maxHp, this.score, this.wave, 60);
+
+    if (this.state === 'PAUSED') {
+      this.ui.renderPauseOverlay(this.ctx, this.canvas.width, this.canvas.height, {
+        kills: 0,
+        shots: 0,
+        accuracy: '100%',
+        time: this.elapsedSeconds
+      });
+    }
   }
 
   drawGrid() {
@@ -335,5 +380,5 @@ class Game {
 }
 
 window.addEventListener('load', () => {
-  new Game();
+  window.game = new Game();
 });

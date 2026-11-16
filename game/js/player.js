@@ -47,6 +47,7 @@ export class Player {
     this.magnetRadius = 100;
     this.fireCooldown = 0;
     this.invulnerableTimer = 0;
+    this.overdriveTimer = 0;
     this.vx = 0;
     this.vy = 0;
   }

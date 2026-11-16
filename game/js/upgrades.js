@@ -45,6 +45,48 @@ export class UpgradeSystem {
         apply: (player) => { player.magnetRadius += 60; }
       },
       {
+        id: 'ricochet',
+        icon: '🔄',
+        title: 'Ricochet Matrix',
+        desc: 'Shots bounce toward a nearby enemy upon impact.',
+        apply: (player) => { player.ricochetCount = (player.ricochetCount || 0) + 1; }
+      },
+      {
+        id: 'crit',
+        icon: '🎯',
+        title: 'Critical Targeting',
+        desc: '+15% Critical Hit Chance for double damage.',
+        apply: (player) => { player.critChance = (player.critChance || 0) + 0.15; }
+      },
+      {
+        id: 'lifesteal',
+        icon: '🩸',
+        title: 'Nanite Lifesteal',
+        desc: 'Restores a small amount of health on defeating enemies.',
+        apply: (player) => { player.lifesteal = (player.lifesteal || 0) + 0.05; }
+      },
+      {
+        id: 'orbital',
+        icon: '🪐',
+        title: 'Orbital Blade Drone',
+        desc: 'Deploys a spinning energy blade that damages enemies on contact.',
+        apply: (player) => { player.hasOrbitalBlade = true; player.orbitalCount = (player.orbitalCount || 0) + 1; }
+      },
+      {
+        id: 'thorns',
+        icon: '🌵',
+        title: 'Reactive Thorns',
+        desc: 'Damages attackers when they collide with your ship.',
+        apply: (player) => { player.thornsDamage = (player.thornsDamage || 0) + 15; }
+      },
+      {
+        id: 'overclock',
+        icon: '🔥',
+        title: 'Core Overclock',
+        desc: '+35% Fire rate boost, but slight weapon spread.',
+        apply: (player) => { player.fireRateMult += 0.35; player.spread = (player.spread || 0) + 0.05; }
+      },
+      {
         id: 'shield',
         icon: '🛡️',
         title: 'Energy Deflector',

@@ -27,8 +27,20 @@ async function main() {
   await page.screenshot({ path: 'screenshots/01_title.png' });
 
   // Click Launch Mission
+  console.log('Clicking start button...');
   await page.click('#start-btn');
-  await setTimeout(1000);
+  await page.evaluate(() => {
+    // Ensure game state is playing and start screen hidden
+    if (window && window.game) {
+      window.game.startGame();
+    } else {
+      const startScreen = document.getElementById('start-screen');
+      if (startScreen) startScreen.classList.add('hidden');
+      const hud = document.getElementById('hud');
+      if (hud) hud.classList.remove('hidden');
+    }
+  });
+  await setTimeout(1500);
 
   // 2. Mid-gameplay with HUD visible
   console.log('Taking screenshot 2: Mid-gameplay HUD');

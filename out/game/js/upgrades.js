@@ -1,4 +1,4 @@
-// Upgrade cards and stats system
+// Upgrade cards and rogue-lite stats system
 export class UpgradeSystem {
   constructor() {
     this.allUpgrades = [

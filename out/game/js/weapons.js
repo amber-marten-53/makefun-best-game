@@ -1,4 +1,4 @@
-// Projectiles and weapon firing with speed spread penalty
+// Projectiles and weapon firing with speed spread penalty system
 import { audio } from './audio.js';
 
 export class WeaponSystem {

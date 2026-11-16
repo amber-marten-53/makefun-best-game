@@ -1,4 +1,4 @@
-// WebAudio Synthesizer for Starfall Arena
+// WebAudio Synthesizer & Sound FX for Starfall Arena
 let ctx = null;
 let muted = false;
 

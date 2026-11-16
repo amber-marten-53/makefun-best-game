@@ -1,4 +1,4 @@
-// Main entry point for Starfall Arena game loop & state machine
+// Main entry point for Starfall Arena game loop & state machine (v3 rewritten)
 import { audio } from './audio.js';
 import { ParticleSystem } from './particles.js';
 import { Player } from './player.js';

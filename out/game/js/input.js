@@ -1,4 +1,4 @@
-// Input handler for Starfall Arena
+// Robust input handler for Starfall Arena
 export class InputHandler {
   constructor(canvas) {
     this.keys = {};

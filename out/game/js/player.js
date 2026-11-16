@@ -8,7 +8,7 @@ export class Player {
     this.radius = 14;
     this.angle = 0;
 
-    // Base stats
+    // Base stats & combat attributes
     this.maxHp = 100;
     this.hp = 100;
     this.maxShield = 50;

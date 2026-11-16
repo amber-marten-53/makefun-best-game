@@ -20,11 +20,13 @@ export class ParticleSystem {
         Math.sin(angle) * spd,
         color,
         Math.random() * 3 + 1.5,
-        Math.random() * 25 + 15
+        Math.random() * 25 + 15,
+        Math.random() > 0.5 ? 'circle' : 'spark'
       );
     }
   }
 
+  // Update all active particles (apply velocity, drag, and age)
   update() {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -41,7 +43,7 @@ export class ParticleSystem {
 
   draw(ctx) {
     for (const p of this.particles) {
-      const alpha = p.life / p.maxLife;
+      const alpha = Math.max(0, p.life / p.maxLife);
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.fillStyle = p.color;
@@ -54,7 +56,7 @@ export class ParticleSystem {
         ctx.stroke();
       } else {
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, Math.max(0.5, p.size * alpha), 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();

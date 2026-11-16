@@ -1,4 +1,4 @@
-// Enemy types: chasers, splitters, shooters, orbiters, and bosses
+// Enemy types: chasers, splitters, shooters, orbiters, and epic bosses
 import { audio } from './audio.js';
 
 export class EnemySystem {
